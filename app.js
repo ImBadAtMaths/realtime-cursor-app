@@ -10,7 +10,10 @@
   const emptyState = document.querySelector("#empty-state");
   const cursors = new Map();
   const room = `realtime-cursor:${location.pathname || "/"}`;
-  const channel = "BroadcastChannel" in window ? new BroadcastChannel(room) : null;
+  const serverUrl = typeof window.REALTIME_CURSOR_WS_URL === "string"
+    ? window.REALTIME_CURSOR_WS_URL.trim()
+    : "";
+  const channel = !serverUrl && "BroadcastChannel" in window ? new BroadcastChannel(room) : null;
   let socket;
   let localUser;
   let color = "#84a7ff";
@@ -39,14 +42,23 @@
 
   function publish(cursor) {
     const message = { type: "cursor:update", room, cursor };
-    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
-    if (channel) channel.postMessage(message);
-    receive(message);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+    } else if (channel) {
+      channel.postMessage(message);
+      receive(message);
+    }
   }
 
   function receive(message) {
-    if (!message || message.room !== room || message.type !== "cursor:update" || !message.cursor) return;
-    cursors.set(message.cursor.id, message.cursor);
+    if (!message || message.room !== room) return;
+    if (message.type === "cursor:leave") {
+      cursors.delete(message.id);
+    } else if (message.type === "cursor:update" && message.cursor) {
+      cursors.set(message.cursor.id, message.cursor);
+    } else {
+      return;
+    }
     renderCursorList();
     drawCursors();
   }
@@ -106,18 +118,20 @@
   }
 
   function connect() {
-    const url = window.REALTIME_CURSOR_WS_URL;
-    if (!url) {
+    if (!serverUrl) {
       setStatus("Local preview mode", "connected");
       return;
     }
-    socket = new WebSocket(url);
-    socket.addEventListener("open", () => setStatus("Connected to realtime server", "connected"));
+    socket = new WebSocket(serverUrl);
+    socket.addEventListener("open", () => {
+      setStatus("Connected to realtime server", "connected");
+      if (localUser) socket.send(JSON.stringify({ type: "join", room, cursor: localUser }));
+    });
     socket.addEventListener("message", (event) => {
       try { receive(JSON.parse(event.data)); } catch (error) { console.error("Invalid cursor message", error); }
     });
-    socket.addEventListener("error", () => setStatus("Realtime server unavailable; local preview still active", "error"));
-    socket.addEventListener("close", () => { if (localUser) setStatus("Disconnected; local preview still active", "error"); });
+    socket.addEventListener("error", () => setStatus("Realtime server unavailable", "error"));
+    socket.addEventListener("close", () => { if (localUser) setStatus("Disconnected from realtime server", "error"); });
   }
 
   form.addEventListener("submit", (event) => {
@@ -126,7 +140,10 @@
     if (!name) return;
     localUser = { id: `${name}-${crypto.randomUUID()}`, name, color, x: 0, y: 0 };
     cursors.set(localUser.id, localUser);
-    setStatus(window.REALTIME_CURSOR_WS_URL ? "Connecting..." : "Local preview mode", "connected");
+    setStatus(serverUrl ? "Connecting..." : "Local preview mode", "connected");
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "join", room, cursor: localUser }));
+    }
     renderCursorList();
   });
   canvas.addEventListener("pointermove", (event) => {

@@ -1,0 +1,1 @@
+window.REALTIME_CURSOR_WS_URL = "";
