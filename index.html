@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Realtime Cursors</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">Realtime collaboration</p>
+        <h1>Shared cursor canvas</h1>
+        <p class="subtitle">Choose a name, then move your cursor over the canvas to share it with everyone in the room.</p>
+      </header>
+
+      <section class="controls" aria-label="Connection settings">
+        <form id="join-form">
+          <label for="username">Your name</label>
+          <div class="join-row">
+            <input id="username" name="username" type="text" maxlength="32" autocomplete="name" placeholder="e.g. Ada" required />
+            <button type="submit">Join canvas</button>
+          </div>
+        </form>
+        <div class="connection">
+          <span id="connection-dot" class="status-dot" aria-hidden="true"></span>
+          <span id="connection-status" role="status">Enter your name to join</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="canvas-wrap">
+          <canvas id="cursor-canvas" aria-label="Shared cursor canvas"></canvas>
+          <div id="empty-state" class="empty-state">Join the canvas to start sharing your cursor.</div>
+        </div>
+        <aside class="cursor-panel" aria-label="Active cursors">
+          <div class="panel-heading">
+            <h2>Active cursors</h2>
+            <span id="cursor-count" class="count">0</span>
+          </div>
+          <ul id="cursor-list" class="cursor-list"></ul>
+        </aside>
+      </section>
+      <p class="help-text">Coordinates are relative to the canvas. Configure <code>window.REALTIME_CURSOR_WS_URL</code> before loading the page to use a WebSocket server.</p>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
